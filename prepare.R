@@ -1,5 +1,6 @@
 library(readxl)
 library(philentropy)
+library(tidyr)
 
 distinctness <- function(x) philentropy::H(table(x, useNA = 'ifany')/length(x)) / log(length(x), 2)
 
@@ -14,3 +15,14 @@ xx <- sapply(dat0, distinctness)
 general <- unique(dat0[,names(xx[xx==0])])
 
 dat1 <- dat0[, setdiff(names(dat0), names(general))]
+
+# split into Wahlkreise
+wahlkreise <- split(dat1, dat1$wahlkreisbezeichnung)
+# concentrate on Kanton
+kanton0 <- wahlkreise[['Kanton Basel-Stadt']]
+
+# split out kanton constants
+xx <- sapply(kanton0, distinctness)
+kanton_general <- unique(kanton[,names(xx[xx==0])])
+
+kanton1 <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
