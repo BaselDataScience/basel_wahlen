@@ -26,3 +26,9 @@ xx <- sapply(kanton0, distinctness)
 kanton_general <- unique(kanton[,names(xx[xx==0])])
 
 kanton1 <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
+
+# age distribution of candidates
+hist(kanton1$alter_am_jahresende_2023, probability = TRUE, ylim=c(0, 0.03),
+     main = 'Altersverteilung der Kandidaten', xlab = 'Kandidatenalter')
+lines(density(kanton1$alter_am_jahresende_2023, adjust=.5))
+lines(density(kanton1$alter_am_jahresende_2023))
