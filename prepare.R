@@ -1,6 +1,6 @@
+library(dplyr)
 library(readxl)
 library(philentropy)
-library(tidyr)
 
 distinctness <- function(x) philentropy::H(table(x, useNA = 'ifany')/length(x)) / log(length(x), 2)
 
@@ -23,7 +23,7 @@ kanton0 <- wahlkreise[['Kanton Basel-Stadt']]
 
 # split out kanton constants
 xx <- sapply(kanton0, distinctness)
-kanton_general <- unique(kanton[,names(xx[xx==0])])
+kanton_general <- unique(kanton0[,names(xx[xx==0])])
 
 kanton1 <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
 
@@ -42,3 +42,16 @@ par(mfrow=c(2,1))
 age_distr(subset(kanton1, geschlecht=='F'), 'weiblich')
 age_distr(subset(kanton1, geschlecht=='M'), 'männlich')
 par(mfrow=c(1,1))
+
+### candidate votes
+kanton1 %>% 
+  dplyr::select(kandidaten_nr, parteikurzbezeichnung, bisher, gewahlt, ganzer_name, stimmen_total_aus_wahlzettel, hlv_nr) %>% 
+  dplyr::arrange(desc(stimmen_total_aus_wahlzettel))
+
+### Lists
+table(kanton1$listen_nr, useNA = 'ifany')  # 32 lists run
+lists <- dplyr::count(kanton1, listen_nr, partei_id, parteikurzbezeichnung, parteibezeichnung)
+sapply(lists, distinctness)
+
+
+
