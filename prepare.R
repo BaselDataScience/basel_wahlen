@@ -27,8 +27,18 @@ kanton_general <- unique(kanton[,names(xx[xx==0])])
 
 kanton1 <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
 
-# age distribution of candidates
-hist(kanton1$alter_am_jahresende_2023, probability = TRUE, ylim=c(0, 0.03),
-     main = 'Altersverteilung der Kandidaten', xlab = 'Kandidatenalter')
-lines(density(kanton1$alter_am_jahresende_2023, adjust=.5))
-lines(density(kanton1$alter_am_jahresende_2023))
+## age distribution of candidates
+age_distr <- function(dat, dataspec=NULL) {
+  hist(dat$alter_am_jahresende_2023, freq = FALSE,
+       main = paste('Altersverteilung der Kandidaten', dataspec), xlab = 'Kandidatenalter',
+       breaks = seq(15,90,5))
+  lines(density(dat$alter_am_jahresende_2023, adjust=.5), col='blue')
+  lines(density(dat$alter_am_jahresende_2023), col='red')
+}
+age_distr(kanton1)
+
+# by gender
+par(mfrow=c(2,1))
+age_distr(subset(kanton1, geschlecht=='F'), 'weiblich')
+age_distr(subset(kanton1, geschlecht=='M'), 'männlich')
+par(mfrow=c(1,1))
