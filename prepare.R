@@ -50,8 +50,14 @@ kanton1 %>%
 
 ### Lists
 table(kanton1$listen_nr, useNA = 'ifany')  # 32 lists run
-lists <- dplyr::count(kanton1, listen_nr, partei_id, parteikurzbezeichnung, parteibezeichnung)
+lists <- dplyr::count(kanton1, listen_nr, hlv_nr, ulv_nr, partei_id, parteikurzbezeichnung, parteibezeichnung)
 sapply(lists, distinctness)
 
-
-
+# tree structure of the lists:
+lists$pathString <- paste('basel',
+                          dplyr::coalesce(lists$hlv_nr, ''),
+                          dplyr::coalesce(lists$ulv_nr, ''),
+                          lists$listen_nr,
+                          sep = '/'
+                          )
+data.tree::as.Node(lists)
