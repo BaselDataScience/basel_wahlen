@@ -1,3 +1,4 @@
+library(data.tree)
 library(dplyr)
 library(readxl)
 library(philentropy)
@@ -60,4 +61,13 @@ lists$pathString <- paste('basel',
                           lists$listen_nr,
                           sep = '/'
                           )
-data.tree::as.Node(lists)
+zz <- data.tree::as.Node(lists)
+print(zz, 'parteikurzbezeichnung')
+# number of candidates per Hauptliste
+zz$Do( function(x) {
+  x$kandidaten_total <- Aggregate(node = x,
+                       attribute = "n",
+                       aggFun = sum)
+                  }
+     )
+data.tree::Get(zz$children, 'kandidaten_total')
