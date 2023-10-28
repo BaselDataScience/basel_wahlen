@@ -51,7 +51,12 @@ kanton1 %>%
 
 ### Lists
 table(kanton1$listen_nr, useNA = 'ifany')  # 32 lists run
-lists <- dplyr::count(kanton1, listen_nr, hlv_nr, ulv_nr, partei_id, parteikurzbezeichnung, parteibezeichnung)
+lists <- kanton1 %>% 
+  group_by(listen_nr, hlv_nr, ulv_nr, partei_id, parteikurzbezeichnung, parteibezeichnung) %>% 
+  summarise(listenstimmen=mean(kandidatenstimmen_unveranderte_wahlzettel+kandidatenstimmen_veranderte_wahlzettel+
+                                zusatzstimmen_unveranderte_wahlzettel+zusatzstimmen_veranderte_wahlzettel),
+            kandidates=n())
+  
 sapply(lists, distinctness)
 
 # tree structure of the lists:
@@ -66,8 +71,11 @@ print(zz, 'parteikurzbezeichnung')
 # number of candidates per Hauptliste
 zz$Do( function(x) {
   x$kandidaten_total <- Aggregate(node = x,
-                       attribute = "n",
+                       attribute = "kandidates",
                        aggFun = sum)
                   }
      )
 data.tree::Get(zz$children, 'kandidaten_total')
+
+# top-level votes
+sort(data.tree::Get(zz$children, function(x) data.tree::Aggregate(x, 'listenstimmen', sum)), decreasing = TRUE)
