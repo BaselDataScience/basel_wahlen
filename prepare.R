@@ -77,5 +77,10 @@ zz$Do( function(x) {
      )
 data.tree::Get(zz$children, 'kandidaten_total')
 
-# top-level votes
-sort(data.tree::Get(zz$children, function(x) data.tree::Aggregate(x, 'listenstimmen', sum)), decreasing = TRUE)
+## top-level votes
+hl_votes <- sort(data.tree::Get(zz$children, function(x) data.tree::Aggregate(x, 'listenstimmen', sum)), decreasing = TRUE)
+# 1st seat distribution
+quorum1 <- ceiling(sum(hl_votes)/(4+1))
+seats1 <- floor(hl_votes/quorum1)
+# 2nd seat distribution
+sort(hl_votes/(1+seats1), decreasing = TRUE)
