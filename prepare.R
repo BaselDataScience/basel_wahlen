@@ -26,7 +26,7 @@ kanton0 <- wahlkreise[['Kanton Basel-Stadt']]
 xx <- sapply(kanton0, distinctness)
 kanton_general <- unique(kanton0[,names(xx[xx==0])])
 
-kanton1 <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
+kanton <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
 
 ## age distribution of candidates
 age_distr <- function(dat, dataspec=NULL) {
@@ -36,22 +36,22 @@ age_distr <- function(dat, dataspec=NULL) {
   lines(density(dat$alter_am_jahresende_2023, adjust=.5), col='blue')
   lines(density(dat$alter_am_jahresende_2023), col='red')
 }
-age_distr(kanton1)
+age_distr(kanton)
 
 # by gender
 par(mfrow=c(2,1))
-age_distr(subset(kanton1, geschlecht=='F'), 'weiblich')
-age_distr(subset(kanton1, geschlecht=='M'), 'männlich')
+age_distr(subset(kanton, geschlecht=='F'), 'weiblich')
+age_distr(subset(kanton, geschlecht=='M'), 'männlich')
 par(mfrow=c(1,1))
 
 ### candidate votes
-kanton1 %>% 
+kanton %>% 
   dplyr::select(kandidaten_nr, parteikurzbezeichnung, bisher, gewahlt, ganzer_name, stimmen_total_aus_wahlzettel, hlv_nr) %>% 
   dplyr::arrange(desc(stimmen_total_aus_wahlzettel))
 
 ### Lists
-table(kanton1$listen_nr, useNA = 'ifany')  # 32 lists run
-lists <- kanton1 %>% 
+table(kanton$listen_nr, useNA = 'ifany')  # 32 lists run
+lists <- kanton %>% 
   group_by(listen_nr, hlv_nr, ulv_nr, partei_id, parteikurzbezeichnung, parteibezeichnung) %>% 
   summarise(listenstimmen=mean(kandidatenstimmen_unveranderte_wahlzettel+kandidatenstimmen_veranderte_wahlzettel+
                                 zusatzstimmen_unveranderte_wahlzettel+zusatzstimmen_veranderte_wahlzettel),
