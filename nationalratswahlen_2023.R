@@ -11,20 +11,23 @@ if (!exists('dat0')) {
   dat0 <- readxl::read_xlsx(tf)
 }
 
-# determine constant columns, remove them to "general" dataframe
-xx <- sapply(dat0, distinctness)
-general <- unique(dat0[,names(xx[xx==0])])
+# determine constant columns, move them to "general" dataframe
+(entropy0 <- sapply(dat0, distinctness))
+general <- unique(dat0[,names(entropy0[entropy0==0])])
 
 dat1 <- dat0[, setdiff(names(dat0), names(general))]
 
-# split into Wahlkreise
+## find right Wahlkreis for Kanton
+table(dat1$wahlkreisbezeichnung)
+
+# split dat1 by Wahlkreise
 wahlkreise <- split(dat1, dat1$wahlkreisbezeichnung)
 # concentrate on Kanton
 kanton0 <- wahlkreise[['Kanton Basel-Stadt']]
 
 # split out kanton constants
-xx <- sapply(kanton0, distinctness)
-kanton_general <- unique(kanton0[,names(xx[xx==0])])
+(entropy_kanton <- sapply(kanton0, distinctness))
+kanton_general <- unique(kanton0[,names(entropy_kanton[entropy_kanton==0])])
 
 kanton <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
 

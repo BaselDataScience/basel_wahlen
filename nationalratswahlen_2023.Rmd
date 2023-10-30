@@ -1,0 +1,81 @@
+---
+title: "Nationalratswahlen Basel 2023"
+author: "Reinhold Koch"
+date: "2023-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Nationalratswahlen Basel 2023
+
+On 2023-10-22 Nationalratswahlen took place in Switzerland, so also in Basel.
+The results can be seen on https://www.staatskanzlei.bs.ch/politische-rechte/wahlen-abstimmungen/wahlen-2023.html
+including the protocols how the 4 Basel seats in the Nationalrat were assigned.
+
+A nice open government data service are the downloadable vote counts from a link on this page. 
+As the Swiss election system is far from simple I thought it informativ to look into the vote counts
+and see whether I could compute the election results myself and see whether I arrive at the same results
+as the Basel Staatskanzlei.
+
+```{r initialise}
+library(data.tree)
+library(dplyr, warn.conflicts = FALSE)
+library(philentropy)
+library(readxl, warn.conflicts = FALSE)
+
+distinctness <- function(x) philentropy::H(table(x, useNA = 'ifany')/length(x)) / log(length(x), 2)
+
+```
+
+### Data download
+If not already in the active R session, I download the Excel file containing the vote counts.
+Excel file, because it is type safe ("01" != 1) and provides a familiar table format.
+
+```{r, download}
+# read in data if not already present
+if (!exists('dat0')) {
+  download.file('https://data.bs.ch/api/explore/v2.1/catalog/datasets/100281/exports/xlsx', tf <- tempfile(fileext = '.xlsx'))
+  dat0 <- readxl::read_xlsx(tf)
+}
+dim(dat0)
+```
+
+### Data scrubbing
+This is a pretty wide data table with 90 columns.
+A description of the columns can be found as "Datensatzschema" in the tab "Information" on
+https://data.bs.ch/explore/dataset/100281/information.
+The first columns contain constant values, like **wahlbezeichnung** "Wahl von vier Mitgliedern des Nationalrates".
+
+To find and remove such columns I employ the entropy of a column's values. 
+The **distinctness()** function defined above returns **0** for columns with constant values
+and **1** for columns that have a different value for each row in the table (row identifying columns).
+
+```{r scrub}
+# determine constant columns, move them to "general" dataframe
+entropy0 <- sapply(dat0, distinctness)
+general <- unique(dat0[,names(entropy0[entropy0==0])])
+general
+
+dat1 <- dat0[, setdiff(names(dat0), names(general))]
+dim(dat1)
+```
+
+## Wahlkreise
+Among the remaining 85 columns there are 3 that identify Wahlkreise.
+I am not interested in the individual Wahlkreise (electoral district), but in
+the "Kanton Basel-Stadt".
+So I split dat1 accordingly and concentrate on this pseudo Wahlkreis.
+
+```{r wahlkreise}
+## find right Wahlkreis for Kanton
+table(dat1$wahlkreisbezeichnung)
+
+# split dat1 by Wahlkreise
+wahlkreise <- split(dat1, dat1$wahlkreisbezeichnung)
+# concentrate on Kanton
+kanton0 <- wahlkreise[['Kanton Basel-Stadt']]
+dim(kanton0)
+```
