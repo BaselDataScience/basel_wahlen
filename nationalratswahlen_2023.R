@@ -12,7 +12,8 @@ if (!exists('dat0')) {
 }
 
 # determine constant columns, move them to "general" dataframe
-(entropy0 <- sapply(dat0, distinctness))
+entropy0 <- sapply(dat0, distinctness)
+sort(entropy0)
 general <- unique(dat0[,names(entropy0[entropy0==0])])
 
 dat1 <- dat0[, setdiff(names(dat0), names(general))]
@@ -26,7 +27,8 @@ wahlkreise <- split(dat1, dat1$wahlkreisbezeichnung)
 kanton0 <- wahlkreise[['Kanton Basel-Stadt']]
 
 # split out kanton constants
-(entropy_kanton <- sapply(kanton0, distinctness))
+entropy_kanton <- sapply(kanton0, distinctness)
+sort(entropy_kanton)
 kanton_general <- unique(kanton0[,names(entropy_kanton[entropy_kanton==0])])
 
 kanton <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
@@ -49,7 +51,7 @@ par(mfrow=c(1,1))
 
 ### candidate votes
 kanton %>% 
-  dplyr::select(kandidaten_nr, parteikurzbezeichnung, bisher, gewahlt, ganzer_name, stimmen_total_aus_wahlzettel, hlv_nr) %>% 
+  dplyr::select(parteikurzbezeichnung, bisher, gewahlt, ganzer_name, stimmen_total_aus_wahlzettel, hlv_nr, kandidaten_nr) %>% 
   dplyr::arrange(desc(stimmen_total_aus_wahlzettel))
 
 ### Lists
@@ -60,7 +62,7 @@ lists <- kanton %>%
                                 zusatzstimmen_unveranderte_wahlzettel+zusatzstimmen_veranderte_wahlzettel),
             kandidates=n())
   
-sapply(lists, distinctness)
+sort(sapply(lists, distinctness))
 
 # tree structure of the lists:
 lists$pathString <- paste('basel',

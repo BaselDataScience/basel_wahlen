@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(width = 100)
 ```
 
 ## Nationalratswahlen Basel 2023
@@ -79,3 +80,158 @@ wahlkreise <- split(dat1, dat1$wahlkreisbezeichnung)
 kanton0 <- wahlkreise[['Kanton Basel-Stadt']]
 dim(kanton0)
 ```
+
+### scrub kanton
+There are a number of constant columns in the kanton data table.
+Like with the original data table I move them out to a separate table.
+
+```{r scrub_kanton}
+entropy_kanton <- sapply(kanton0, distinctness)
+kanton_general <- unique(kanton0[,names(entropy_kanton[entropy_kanton==0])])
+
+kanton <- kanton0[, setdiff(names(kanton0), names(kanton_general))]
+dim(kanton)
+```
+The entropy shows that the candidates' name and its equivalents kandidaten_nr and personen_id uniquely
+determine a single row in the kanton table.
+
+### excursion: distribution of candidate ages
+Just for fun let us have a look at the distribution of the candidates' ages:
+
+```{r age_distribution}
+## age distribution of candidates
+age_distr <- function(dat, dataspec=NULL) {
+  hist(dat$alter_am_jahresende_2023, freq = FALSE,
+       main = paste('Altersverteilung der Kandidaten', dataspec), xlab = 'Kandidatenalter',
+       breaks = seq(15,90,5))
+  lines(density(dat$alter_am_jahresende_2023, adjust=.5), col='blue')
+  lines(density(dat$alter_am_jahresende_2023), col='red')
+}
+age_distr(kanton)
+
+# by gender
+par(mfrow=c(2,1))
+age_distr(subset(kanton, geschlecht=='F'), 'weiblich')
+age_distr(subset(kanton, geschlecht=='M'), 'männlich')
+par(mfrow=c(1,1))
+```
+
+## candidate votes
+Back to the main topic: number of votes. How many did each candidate collect?
+
+```{r votes}
+kanton %>% 
+  dplyr::select(kandidaten_nr, parteikurzbezeichnung, bisher, gewahlt, ganzer_name, stimmen_total_aus_wahlzettel, hlv_nr) %>% 
+  dplyr::arrange(desc(stimmen_total_aus_wahlzettel))
+```
+
+Naively one could imagine the seats go to the 4 candidates with the most votes - but that ignores
+the intention to try to assign seats in a fashion that mirrors the votes for lists;
+here in Switzerland the most decisive seat distribution factor are the votes for a
+"Listenverbindung".
+
+# Listen and Listenverbindungen
+We have 32 lists, most of them sent in 4 candidates:
+```{r lists}
+table(kanton$listen_nr, useNA = 'ifany')  # 32 lists run
+(lists <- kanton %>% 
+  group_by(listen_nr, hlv_nr, ulv_nr, partei_id, parteikurzbezeichnung, parteibezeichnung) %>% 
+  summarise(listenstimmen=mean(kandidatenstimmen_unveranderte_wahlzettel+kandidatenstimmen_veranderte_wahlzettel+
+                                zusatzstimmen_unveranderte_wahlzettel+zusatzstimmen_veranderte_wahlzettel),
+            kandidates=n()))
+```  
+
+Looking at the distinctiveness of the columns in table **lists** we see:
+
+```{r list_distinct}
+sort(sapply(lists, distinctness))
+```
+
+listen_nr, parteikurzbezeichnung, and parteibezeichnung all identify uniquely the lists. 
+What partei_id is supposed to designate escapes me, the "Datensatzschema" from https://data.bs.ch/explore/dataset/100281/information
+does not help.
+
+## tree structure of Listenverbindungen
+
+There are Hauptlistenverbindungen and Unterlistenverbindungen, though these are not mandatory for lists,
+they generate a tree structure with 3 major blocks competing for 4 seats.
+
+Analysis of a values in tree structures is not mainstream in R.
+I employ the package **data.tree** to do so and first need to construct another column in table
+**lists** that indicates the position in the tree:
+
+```{r listenverbindungen}
+# tree structure of the lists:
+lists$pathString <- paste('basel',
+                          dplyr::coalesce(lists$hlv_nr, ''),
+                          dplyr::coalesce(lists$ulv_nr, ''),
+                          lists$listen_nr,
+                          sep = '/'
+                          )
+zz <- data.tree::as.Node(lists)
+print(zz, 'parteikurzbezeichnung')
+```
+
+Three lists, PdA, VA, and MV, do not belong to any Listenverbindung.
+There are three Hauptlistenverbindungen:
+
+* 1 conservatives
+* 2 moderate left
+* 3 SVP
+
+among which the seats have to be distributed.
+
+### candidates per Hauptlistenverbindung
+
+```{r hlv_candidates}
+# number of candidates per Hauptliste
+zz$Do( function(x) {
+  x$kandidaten_total <- Aggregate(node = x,
+                       attribute = "kandidates",
+                       aggFun = sum)
+                  }
+     )
+data.tree::Get(zz$children, 'kandidaten_total')
+```
+Extensive use of Listenverbindungen blows up the number of candidates;
+Hauptlistenverbindung 1 comes with 68 of these!
+
+# top level votes
+
+How many votes did the Hauptlistenverbindungen and the Einzellisten come up with?
+
+```{r hlv_votes}
+## top-level votes
+(hl_votes <- sort(data.tree::Get(zz$children, function(x) data.tree::Aggregate(x, 'listenstimmen', sum)), decreasing = TRUE))
+```
+
+## seats per Hauptlistenverbindung
+
+First step in seat distribution is to determine the quorum:
+the number of votes is divided by number of seats plus 1, then the next higher
+integer number is set as quorum.
+The integer part of the division of the votes of Hauptlistenverbindungen by the quorum 
+indicates number of seats given to the Hauplistenverbindung.
+
+It is possible that this first round does not distribute all seats - as is the case here.
+Votes of the Hauptlistenverbindung then are divided by 1 plus number of seats received
+and the remaining seat goes to the Hauptlistenverbindung with the highest quotient,
+here 1.
+
+
+```{r hlv_seats}
+# 1st seat distribution
+(quorum1 <- ceiling(sum(hl_votes)/(4+1)))
+(seats1 <- floor(hl_votes/quorum1))
+# 2nd seat distribution
+sort(hl_votes/(1+seats1), decreasing = TRUE)
+```
+
+Within the Hauptlistenverbindung the seats get distributed according to the same
+multi-step process first to Unterlistenverbindung, then Liste.
+
+Detailed protocols of this process are provided by the Basel Staatskanzlei, see
+https://www.staatskanzlei.bs.ch/dam/jcr:302a9016-ef8c-41b8-888a-f6d7332ff1ab/Ausw_5a.pdf.
+
+For a general picture what Swiss voters can do with their ballot paper, see
+https://www.srf.ch/news/schweiz/wahlhilfe/kumulieren-und-panaschieren-so-waehlt-man-mit-listen.
